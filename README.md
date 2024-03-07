@@ -1,5 +1,7 @@
 # Introducción a Tekton CI/CD
 
+[Descarga las diapositivas](slides.pdf)
+
 Primero necesitamos un clúster de Kubernetes. Si no tenemos uno, se puede usar `kind`
 ```
 kind create cluster
