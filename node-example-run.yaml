@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: node-example-run-1709689321860
+spec:
+  pipelineRef:
+    name: node-example
+  params:
+    - name: repository
+      value: https://github.com/axios/axios
+  workspaces:
+  - name: shared-data
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

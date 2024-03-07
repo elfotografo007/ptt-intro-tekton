@@ -1,0 +1,107 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: go-example
+spec:
+  params:
+    - name: repository
+    - name: image-registry
+    - name: source-subpath
+      default: ""
+  workspaces:
+  - name: shared-data
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.repository)
+      workspaces:
+      - name: output
+        workspace: shared-data
+    - name: download-dependencies
+      workspaces:
+      - name: source
+        workspace: shared-data
+      runAfter:
+        - git-clone
+      params:
+      - name: source-subpath
+        value: $(params.source-subpath)
+      taskSpec:
+        params:
+        - name: source-subpath
+        steps:
+          - name: mod-download
+            image: golang
+            script: |
+              #!/usr/bin/env bash
+              cd $(workspaces.source.path)/$(params.source-subpath)
+              go mod download
+    - name: test
+      workspaces:
+      - name: source
+        workspace: shared-data
+      runAfter:
+        - download-dependencies
+      params:
+      - name: source-subpath
+        value: $(params.source-subpath)
+      taskSpec:
+        params:
+        - name: source-subpath
+        steps:
+          - name: go-test
+            image: golang
+            script: |
+              #!/usr/bin/env bash
+              cd $(workspaces.source.path)/$(params.source-subpath)
+              go test ./...
+    - name: lint
+      workspaces:
+      - name: source
+        workspace: shared-data
+      runAfter:
+        - download-dependencies
+      params:
+      - name: source-subpath
+        value: $(params.source-subpath)
+      taskSpec:
+        params:
+        - name: source-subpath
+        steps:
+          - name: go-lint
+            image: golangci/golangci-lint
+            script: |
+              #!/usr/bin/env bash
+              cd $(workspaces.source.path)/$(params.source-subpath)
+              golangci-lint run
+    - name: build-container
+      workspaces:
+      - name: source
+        workspace: shared-data
+      runAfter:
+        - test
+        - lint
+      taskRef:
+        name: kaniko
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)
+        - name: CONTEXT
+          value: $(params.source-subpath)
+    - name: scan-container
+      runAfter:
+        - build-container
+      params:
+      - name: source-subpath
+        value: $(params.source-subpath)
+      taskSpec:
+        params:
+        - name: source-subpath
+        steps:
+          - name: grype-scan
+            image: anchore/grype
+            args:
+            - $(tasks.build-container.results.IMAGE_URL)

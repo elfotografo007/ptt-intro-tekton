@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: go-example-run
+spec:
+  pipelineRef:
+    name: go-example
+  params:
+    - name: repository
+      value: https://github.com/GoogleCloudPlatform/golang-samples
+    - name: image-registry
+      value: ttl.sh/ptt-golang-sample
+    - name: source-subpath
+      value: run/helloworld
+  workspaces:
+  - name: shared-data
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

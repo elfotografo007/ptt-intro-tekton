@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: node-example
+spec:
+  params:
+    - name: repository
+  workspaces:
+  - name: shared-data
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.repository)
+      workspaces:
+      - name: output
+        workspace: shared-data
+    - name: test
+      workspaces:
+      - name: source
+        workspace: shared-data
+      runAfter:
+        - git-clone
+      taskSpec:
+        steps:
+          - name: lint
+            image: node
+            script: |
+              #!/usr/bin/env bash
+              cd $(workspaces.source.path)
+              npm ci
+              npm run test:eslint
